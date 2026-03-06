@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>3D 弹珠游戏</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+      background: radial-gradient(ellipse at center bottom, #1a1a4e 0%, #0d0d1f 40%, #050510 100%);
+      width: 100vw;
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
+      touch-action: none;
+    }
+
+    /* 动态网格背景 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+        linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      background-position: 0 0;
+      pointer-events: none;
+      z-index: -1;
+      animation: gridMove 20s linear infinite;
+    }
+
+    @keyframes gridMove {
+      0% {
+        background-position: 0 0;
+      }
+      100% {
+        background-position: 50px 50px;
+      }
+    }
+
+    /* 发光粒子效果 */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 40% 40%, rgba(0, 100, 255, 0.05) 0%, transparent 40%);
+      pointer-events: none;
+      z-index: -1;
+      animation: glowPulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes glowPulse {
+      0% {
+        opacity: 0.5;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    #ui-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: #fff;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: calc(100vw - 40px);
+    }
+
+    #ui-container h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4);
+      letter-spacing: 2px;
+      background: linear-gradient(180deg, #00ffff 0%, #0088ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: right;
+    }
+
+    .control-panel {
+      background: linear-gradient(135deg, rgba(10, 20, 40, 0.85) 0%, rgba(20, 30, 60, 0.9) 100%);
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid rgba(0, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                  0 0 20px rgba(0, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      min-width: 220px;
+      max-width: 280px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #balls-remaining {
+      font-size: 16px;
+      color: #ffd700;
+      text-align: center;
+      margin-bottom: 10px;
+      padding: 8px 15px;
+      background: rgba(255, 215, 0, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .control-panel::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 255, 0.05) 50%, transparent 70%);
+      animation: panelShine 6s ease-in-out infinite;
+    }
+
+    @keyframes panelShine {
+      0%, 100% { transform: translateX(-100%) rotate(45deg); }
+      50% { transform: translateX(100%) rotate(45deg); }
+    }
+
+    .combined-panel {
+      background: linear-gradient(135deg, rgba(20, 10, 40, 0.85) 0%, rgba(40, 20, 60, 0.9) 100%);
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                  0 0 20px rgba(255, 215, 0, 0.15);
+      backdrop-filter: blur(10px);
+      min-width: 220px;
+      max-width: 280px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .combined-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ffd700, transparent);
+      animation: scoreLinePulse 3s ease-in-out infinite;
+    }
+
+    @keyframes scoreLinePulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; box-shadow: 0 0 10px #ffd700; }
+    }
+
+    .combined-panel h2 {
+      font-size: 18px;
+      margin: 0 0 15px 0;
+      color: #ffd700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .combined-panel h2::before {
+      content: '🏆';
+      filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+      font-size: 16px;
+    }
+
+    .combined-panel .score-row {
+      font-size: 14px;
+      margin: 10px 0;
+      color: #e0e0e0;
+      display: flex;
+      align-items: center;
+    }
+
+    .combined-panel .score-row i {
+      width: 6px;
+      height: 6px;
+      background: #00ffff;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
+      animation: dotPulse 2s ease-in-out infinite;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    .combined-panel .score-row span:first-child {
+      color: #aaa;
+      margin-left: auto;
+      margin-right: 10px;
+    }
+
+    .combined-panel .score-row span:last-child {
+      color: #00ffff;
+      font-weight: bold;
+      font-size: 15px;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      background: rgba(0, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      min-width: 40px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* 倍率显示特殊样式 */
+    #multiplier-display span:last-child {
+      color: #ffd700;
+      font-size: 18px;
+      background: rgba(255, 215, 0, 0.15);
+      border-color: rgba(255, 215, 0, 0.3);
+      min-width: 50px;
+    }
+
+    .power-bar-container {
+      width: 100%;
+      height: 25px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 15px;
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5),
+                  0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    .power-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00ff00 0%, #00ffff 25%, #ffff00 50%, #ff6600 75%, #ff0000 100%);
+      transition: width 0.03s linear;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 255, 100, 0.6),
+                  0 0 30px rgba(0, 255, 200, 0.3);
+      will-change: width;
+      position: relative;
+    }
+
+    .power-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: powerGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes powerGlow {
+      0%, 100% { transform: translateX(-100%); }
+      50% { transform: translateX(100%); }
+    }
+
+    .power-bar.max-power {
+      animation: powerPulse 0.3s ease-in-out infinite alternate;
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 100, 0, 0.5);
+    }
+
+    @keyframes powerPulse {
+      0% {
+        filter: brightness(1);
+      }
+      100% {
+        filter: brightness(1.3);
+      }
+    }
+
+    #power-value {
+      font-size: 20px;
+      color: #00ffff;
+      text-align: center;
+      margin-bottom: 15px;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      font-weight: bold;
+      letter-spacing: 1px;
+      background: rgba(0, 255, 255, 0.1);
+      padding: 8px 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      display: inline-block;
+      width: 100%;
+    }
+
+    #launch-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(135deg, #00ffff 0%, #0080ff 100%);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 15px rgba(0, 255, 255, 0.4),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                  0 0 20px rgba(0, 255, 255, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #launch-btn::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #launch-btn:hover::before {
+      opacity: 1;
+    }
+
+    #launch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 255, 255, 0.6),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                  0 0 30px rgba(0, 255, 255, 0.4);
+    }
+
+    #launch-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 10px rgba(0, 255, 255, 0.4);
+    }
+
+    #launch-btn:disabled {
+      background: linear-gradient(135deg, #666 0%, #444 100%);
+      cursor: not-allowed;
+      box-shadow: none;
+      opacity: 0.7;
+    }
+
+    #message {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 0, 40, 0.98) 100%);
+      padding: 25px 50px;
+      border-radius: 15px;
+      color: #fff;
+      font-size: 28px;
+      display: none;
+      z-index: 200;
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.5),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                  0 0 60px rgba(0, 255, 255, 0.3);
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.8),
+                   0 0 40px rgba(0, 255, 255, 0.4);
+      animation: messagePop 0.3s ease forwards;
+      letter-spacing: 2px;
+    }
+
+    #message::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, #00ffff, #ff00ff, #00ffff);
+      border-radius: 15px;
+      z-index: -1;
+      opacity: 0;
+      animation: messageBorder 2s linear infinite;
+    }
+
+    @keyframes messageBorder {
+      0% { opacity: 0; }
+      50% { opacity: 0.5; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes messagePop {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.8);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+      }
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      #ui-container {
+        top: auto;
+        bottom: 10px;
+        left: auto;
+        right: 10px;
+        max-width: calc(100vw - 20px);
+      }
+
+      #ui-container h1 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+        text-align: right;
+      }
+
+      .control-panel,
+      .combined-panel {
+        padding: 12px;
+        min-width: unset;
+        width: 100%;
+        max-width: 200px;
+      }
+
+      #power-value {
+        font-size: 14px;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+      }
+
+      .power-bar-container {
+        height: 16px;
+        margin-bottom: 8px;
+      }
+
+      #launch-btn {
+        padding: 10px;
+        font-size: 13px;
+      }
+
+      .combined-panel h2 {
+        font-size: 14px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+      }
+
+      .combined-panel .score-row {
+        font-size: 12px;
+        margin: 5px 0;
+      }
+
+      .combined-panel .score-row span:last-child {
+        font-size: 13px;
+        min-width: 35px;
+        padding: 2px 6px;
+      }
+
+      #multiplier-display span:last-child {
+        font-size: 14px;
+        min-width: 40px;
+      }
+
+      #message {
+        bottom: 80px;
+        padding: 15px 30px;
+        font-size: 18px;
+        max-width: calc(100vw - 40px);
+      }
+
+      #balls-remaining {
+        font-size: 14px;
+        padding: 6px 10px;
+      }
+
+      /* 名字输入弹窗 */
+      #name-input-modal,
+      #leaderboard-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal-content {
+        background: linear-gradient(135deg, rgba(20, 30, 60, 0.95) 0%, rgba(40, 20, 60, 0.95) 100%);
+        padding: 20px;
+        border-radius: 15px;
+        border: 2px solid rgba(0, 255, 255, 0.5);
+        box-shadow: 0 0 40px rgba(0, 255, 255, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        text-align: center;
+        color: #fff;
+        max-width: 90%;
+        width: 320px;
+      }
+
+      .modal-content h3 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        color: #ffd700;
+      }
+
+      .modal-content p {
+        font-size: 14px;
+        margin-bottom: 15px;
+      }
+
+      .modal-content #pending-score {
+        font-size: 18px;
+        color: #00ffff;
+        font-weight: bold;
+      }
+
+      .modal-content input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
+        border: 2px solid rgba(0, 255, 255, 0.4);
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        margin-bottom: 15px;
+        text-align: center;
+        box-sizing: border-box;
+      }
+
+      .modal-content input[type="text"]:focus {
+        outline: none;
+        border-color: #00ffff;
+      }
+
+      .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .modal-buttons button {
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: bold;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      .modal-buttons button:first-child {
+        background: linear-gradient(135deg, #00ffff 0%, #0080ff 100%);
+        color: #fff;
+      }
+
+      .modal-buttons button:last-child {
+        background: linear-gradient(135deg, #666 0%, #444 100%);
+        color: #fff;
+      }
+
+      /* 排行榜样式 */
+      .modal-content.leaderboard {
+        border-color: rgba(255, 215, 0, 0.5);
+      }
+
+      .modal-content.leaderboard h3 {
+        color: #ffd700;
+      }
+
+      #leaderboard-list {
+        margin: 15px 0;
+        text-align: left;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .leaderboard-entry {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        margin: 6px 0;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 8px;
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        gap: 10px;
+      }
+
+      .leaderboard-entry.first {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.15) 100%);
+        border-color: rgba(255, 215, 0, 0.4);
+      }
+
+      .leaderboard-entry .rank {
+        font-size: 16px;
+        font-weight: bold;
+        color: #ffd700;
+        min-width: 25px;
+        text-align: center;
+      }
+
+      .leaderboard-entry .name {
+        flex: 1;
+        color: #fff;
+        font-size: 14px;
+      }
+
+      .leaderboard-entry .score {
+        font-size: 16px;
+        font-weight: bold;
+        color: #00ffff;
+        min-width: 60px;
+        text-align: right;
+      }
+
+      .leaderboard-entry .date {
+        font-size: 11px;
+        color: #888;
+        min-width: 60px;
+        text-align: right;
+      }
+
+      .no-scores {
+        text-align: center;
+        color: #888;
+        padding: 20px;
+      }
+
+      #close-leaderboard {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
+        font-weight: bold;
+        background: linear-gradient(135deg, #00ffff 0%, #0080ff 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+    }
+
+    /* 小屏幕手机 */
+    @media (max-width: 480px) {
+      #ui-container {
+        top: auto;
+        bottom: 5px;
+        left: auto;
+        right: 5px;
+        max-width: calc(100vw - 10px);
+      }
+
+      #ui-container h1 {
+        font-size: 14px;
+        text-align: right;
+      }
+
+      .control-panel,
+      .combined-panel {
+        padding: 8px;
+        min-width: unset;
+        width: 100%;
+        max-width: 160px;
+      }
+
+      #power-value {
+        font-size: 12px;
+        margin-bottom: 6px;
+        padding: 4px 8px;
+      }
+
+      .power-bar-container {
+        height: 14px;
+        margin-bottom: 6px;
+      }
+
+      #launch-btn {
+        padding: 8px;
+        font-size: 12px;
+      }
+
+      .combined-panel h2 {
+        font-size: 13px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+      }
+
+      .combined-panel .score-row {
+        font-size: 11px;
+        margin: 4px 0;
+      }
+
+      .combined-panel .score-row span:last-child {
+        font-size: 12px;
+        min-width: 30px;
+        padding: 2px 5px;
+      }
+
+      #multiplier-display span:last-child {
+        font-size: 13px;
+        min-width: 35px;
+      }
+
+      #message {
+        bottom: 60px;
+        padding: 12px 20px;
+        font-size: 16px;
+        max-width: calc(100vw - 40px);
+      }
+    }
+
+    /* 横屏模式 */
+    @media (orientation: landscape) and (max-height: 500px) {
+      #ui-container {
+        top: auto;
+        bottom: 5px;
+        left: auto;
+        right: 5px;
+        max-width: calc(100vw - 10px);
+      }
+
+      .control-panel,
+      .combined-panel {
+        padding: 6px;
+        min-width: unset;
+        width: 100%;
+        max-width: 140px;
+      }
+
+      #launch-btn {
+        padding: 6px;
+        font-size: 11px;
+      }
+
+      #message {
+        bottom: 40px;
+        padding: 10px 20px;
+        font-size: 14px;
+        max-width: calc(100vw - 40px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="ui-container">
+    <h1>🎮 3D 弹珠游戏</h1>
+    <div class="control-panel">
+      <div id="balls-remaining">剩余次数：5</div>
+      <div id="power-value">力度：0%</div>
+      <div class="power-bar-container">
+        <div class="power-bar" id="power-bar"></div>
+      </div>
+      <button id="launch-btn">按住发射</button>
+    </div>
+    <div class="combined-panel">
+      <h2>🏆 得分</h2>
+      <div class="score-row" id="multiplier-display"><i></i><span>当前倍率</span><span>1x</span></div>
+      <div class="score-row" id="total-score"><i></i><span>总分</span><span>0</span></div>
+      <div class="score-row" id="last-slot"><i></i><span>最后落点</span><span>-</span></div>
+      <div class="button-group" style="display:flex;gap:8px;margin-top:10px;">
+        <button id="view-leaderboard-btn" style="flex:1;padding:8px;font-size:12px;background:linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,165,0,0.15));border:1px solid rgba(255,215,0,0.4);border-radius:6px;color:#ffd700;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 2px 10px rgba(255,215,0,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">📋 排行榜</button>
+        <button id="restart-btn" style="flex:1;padding:8px;font-size:12px;background:linear-gradient(135deg, rgba(0,255,128,0.2), rgba(0,200,100,0.15));border:1px solid rgba(0,255,128,0.4);border-radius:6px;color:#00ff80;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 2px 10px rgba(0,255,128,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">🔄 重新开始</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="message"></div>
+
+  <!-- 名字输入弹窗 -->
+  <div id="name-input-modal" style="display: none;">
+    <div class="modal-content">
+      <h3>🎉 恭喜进入前五！</h3>
+      <p>您的分数：<span id="pending-score"></span></p>
+      <input type="text" id="player-name" placeholder="请输入名字 (最多 10 字)" maxlength="10" autocomplete="off">
+      <div class="modal-buttons">
+        <button id="submit-score">提交</button>
+        <button id="skip-score">跳过</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 排行榜弹窗 -->
+  <div id="leaderboard-modal" style="display: none;">
+    <div class="modal-content leaderboard">
+      <h3>🏆 排行榜 TOP 5</h3>
+      <div id="leaderboard-list"></div>
+      <button id="close-leaderboard">关闭</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
