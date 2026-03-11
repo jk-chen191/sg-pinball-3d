@@ -447,26 +447,29 @@
     /* 响应式设计 */
     @media (max-width: 768px) {
       #ui-container {
-        top: auto;
-        bottom: 10px;
-        left: auto;
+        top: 10px;
+        bottom: auto;
+        left: 10px;
         right: 10px;
-        max-width: calc(100vw - 20px);
+        max-width: none;
+        width: calc(100vw - 20px);
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 10px;
       }
 
       #ui-container h1 {
-        font-size: 18px;
-        margin-bottom: 10px;
-        letter-spacing: 1px;
-        text-align: right;
+        display: none;
       }
 
       .control-panel,
       .combined-panel {
-        padding: 12px;
+        padding: 10px;
         min-width: unset;
-        width: 100%;
-        max-width: 200px;
+        width: auto;
+        max-width: none;
+        flex: 1;
       }
 
       #power-value {
@@ -508,7 +511,8 @@
       }
 
       #message {
-        bottom: 80px;
+        top: 80px;
+        bottom: auto;
         padding: 15px 30px;
         font-size: 18px;
         max-width: calc(100vw - 40px);
@@ -690,24 +694,29 @@
     /* 小屏幕手机 */
     @media (max-width: 480px) {
       #ui-container {
-        top: auto;
-        bottom: 5px;
-        left: auto;
+        top: 5px;
+        bottom: auto;
+        left: 5px;
         right: 5px;
-        max-width: calc(100vw - 10px);
+        max-width: none;
+        width: calc(100vw - 10px);
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 8px;
       }
 
       #ui-container h1 {
-        font-size: 14px;
-        text-align: right;
+        display: none;
       }
 
       .control-panel,
       .combined-panel {
-        padding: 8px;
+        padding: 6px;
         min-width: unset;
-        width: 100%;
-        max-width: 160px;
+        width: auto;
+        max-width: none;
+        flex: 1;
       }
 
       #power-value {
@@ -749,7 +758,8 @@
       }
 
       #message {
-        bottom: 60px;
+        top: 60px;
+        bottom: auto;
         padding: 12px 20px;
         font-size: 16px;
         max-width: calc(100vw - 40px);
@@ -759,19 +769,29 @@
     /* 横屏模式 */
     @media (orientation: landscape) and (max-height: 500px) {
       #ui-container {
-        top: auto;
-        bottom: 5px;
-        left: auto;
+        top: 5px;
+        bottom: auto;
+        left: 5px;
         right: 5px;
-        max-width: calc(100vw - 10px);
+        max-width: none;
+        width: calc(100vw - 10px);
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      #ui-container h1 {
+        display: none;
       }
 
       .control-panel,
       .combined-panel {
         padding: 6px;
         min-width: unset;
-        width: 100%;
-        max-width: 140px;
+        width: auto;
+        max-width: none;
+        flex: 1;
       }
 
       #launch-btn {
@@ -780,7 +800,8 @@
       }
 
       #message {
-        bottom: 40px;
+        top: 40px;
+        bottom: auto;
         padding: 10px 20px;
         font-size: 14px;
         max-width: calc(100vw - 40px);
